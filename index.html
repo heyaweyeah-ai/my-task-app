@@ -72,7 +72,9 @@
     </div>
     <button class="btn btn-add" onclick="addTask()">追加</button>
     <button class="btn btn-sort" onclick="sortTasks()">📅 期限順に整列</button>
-
+    <button class="btn" style="background-color: #475569; color: white; width: 100%; margin-bottom: 20px;" onclick="exportCSV()">
+    📊 データをCSVで書き出す
+</button>
     <div class="filter-group">
         <button class="filter-btn active" onclick="filterTasks('all', this)">すべて</button>
         <button class="filter-btn" onclick="filterTasks('active', this)">未完了</button>
@@ -170,8 +172,42 @@
             `;
             list.appendChild(li);
         });
+function exportCSV() {
+    const tasks = getTasks();
+    if (tasks.length === 0) {
+        alert("書き出すデータがありません");
+        return;
     }
+
+    // CSVのヘッダー（1行目）
+    let csvContent = "タスク名,期限,重要度,状態\n";
+
+    // データの各行を作成
+    tasks.forEach(task => {
+        const status = task.completed ? "完了" : "未完了";
+        const priorityLabel = task.priority === "priority-high" ? "高" : 
+                             task.priority === "priority-mid" ? "中" : "低";
+        
+        // カンマを含むデータが不具合を起こさないよう「"」で囲む
+        csvContent += `"${task.text}","${task.date || '期限なし'}","${priorityLabel}","${status}"\n`;
+    });
+
+    // 文字化け防止（UTF-8 BOM）
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
+    
+    // ダウンロード用のリンクを一時的に作ってクリックする
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "my_tasks.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}    }
 </script>
 
 </body>
+
 </html>
