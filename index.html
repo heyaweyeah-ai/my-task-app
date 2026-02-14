@@ -4,20 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Business Task Manager Master</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2563eb">
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(() => console.log("Service Worker Registered"));
-  }
-</script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log("Service Worker Registered"));
+        }
+    </script>
     <style>
         :root { --primary: #2563eb; --success: #10b981; --danger: #ff4d4f; --warning: #faad14; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #f8fafc; display: flex; justify-content: center; padding: 20px; }
         .container { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 600px; }
         
-        /* 統計ダッシュボード */
         .stats-bar { display: flex; justify-content: space-around; background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9rem; font-weight: bold; }
         .stat-item { text-align: center; }
         .stat-count { display: block; font-size: 1.2rem; color: var(--primary); }
@@ -25,14 +24,18 @@
         .input-group { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 10px; }
         input, select, .btn { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none; }
         
+        /* 検索窓のスタイル */
+        #searchInput { width: 100%; margin-bottom: 10px; box-sizing: border-box; border: 2px solid #e2e8f0; }
+        #searchInput:focus { border-color: var(--primary); }
+
         .btn { cursor: pointer; font-weight: bold; border: none; transition: 0.2s; }
         .btn-add { background: var(--primary); color: white; width: 100%; margin-bottom: 10px; }
-        .btn-sort { background: white; border: 1px solid var(--primary); color: var(--primary); width: 100%; margin-bottom: 20px; }
+        .btn-sort { background: white; border: 1px solid var(--primary); color: var(--primary); width: 100%; margin-bottom: 10px; }
+        .btn-csv { background-color: #475569; color: white; width: 100%; margin-bottom: 20px; }
         .btn:hover { opacity: 0.8; }
 
-        /* フィルターボタン */
         .filter-group { display: flex; gap: 5px; margin-bottom: 15px; }
-        .filter-btn { flex: 1; padding: 5px; font-size: 0.8rem; background: #e2e8f0; border-radius: 5px; cursor: pointer; border: none; }
+        .filter-btn { flex: 1; padding: 8px; font-size: 0.8rem; background: #e2e8f0; border-radius: 5px; cursor: pointer; border: none; }
         .filter-btn.active { background: var(--primary); color: white; }
 
         ul { list-style: none; padding: 0; }
@@ -46,8 +49,9 @@
         .overdue .task-date { color: var(--danger); font-weight: bold; }
 
         .task-info { flex: 1; cursor: pointer; }
+        .task-text { font-weight: 500; }
         .task-date { font-size: 0.75rem; color: #64748b; }
-        .delete-btn { color: var(--danger); background: none; border: 1px solid var(--danger); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; }
+        .delete-btn { color: var(--danger); background: none; border: 1px solid var(--danger); padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -61,6 +65,8 @@
         <div class="stat-item">完了<span id="doneCount" class="stat-count">0</span></div>
     </div>
 
+    <input type="text" id="searchInput" placeholder="タスクを検索..." oninput="render()">
+
     <div class="input-group">
         <input type="text" id="taskInput" placeholder="何を成し遂げますか？">
         <input type="date" id="dateInput">
@@ -72,9 +78,8 @@
     </div>
     <button class="btn btn-add" onclick="addTask()">追加</button>
     <button class="btn btn-sort" onclick="sortTasks()">📅 期限順に整列</button>
-    <button class="btn" style="background-color: #475569; color: white; width: 100%; margin-bottom: 20px;" onclick="exportCSV()">
-    📊 データをCSVで書き出す
-</button>
+    <button class="btn btn-csv" onclick="exportCSV()">📊 データをCSVで書き出す</button>
+
     <div class="filter-group">
         <button class="filter-btn active" onclick="filterTasks('all', this)">すべて</button>
         <button class="filter-btn" onclick="filterTasks('active', this)">未完了</button>
@@ -144,6 +149,7 @@
     function render() {
         const list = document.getElementById('taskList');
         const tasks = getTasks();
+        const searchWord = document.getElementById('searchInput').value.toLowerCase();
         list.innerHTML = "";
 
         let total = tasks.length;
@@ -155,7 +161,10 @@
         const today = new Date().toISOString().split('T')[0];
 
         tasks.forEach((task, index) => {
-            // フィルター条件の判定
+            // 検索ワードによるフィルタリング
+            if (searchWord && !task.text.toLowerCase().includes(searchWord)) return;
+
+            // ボタンによるフィルタリング
             if (currentFilter === 'active' && task.completed) return;
             if (currentFilter === 'high' && task.priority !== 'priority-high') return;
 
@@ -172,42 +181,37 @@
             `;
             list.appendChild(li);
         });
-function exportCSV() {
-    const tasks = getTasks();
-    if (tasks.length === 0) {
-        alert("書き出すデータがありません");
-        return;
     }
 
-    // CSVのヘッダー（1行目）
-    let csvContent = "タスク名,期限,重要度,状態\n";
+    function exportCSV() {
+        const tasks = getTasks();
+        if (tasks.length === 0) {
+            alert("書き出すデータがありません");
+            return;
+        }
 
-    // データの各行を作成
-    tasks.forEach(task => {
-        const status = task.completed ? "完了" : "未完了";
-        const priorityLabel = task.priority === "priority-high" ? "高" : 
-                             task.priority === "priority-mid" ? "中" : "低";
+        let csvContent = "タスク名,期限,重要度,状態\n";
+
+        tasks.forEach(task => {
+            const status = task.completed ? "完了" : "未完了";
+            const priorityLabel = task.priority === "priority-high" ? "高" : 
+                                 task.priority === "priority-mid" ? "中" : "低";
+            
+            csvContent += `"${task.text}","${task.date || '期限なし'}","${priorityLabel}","${status}"\n`;
+        });
+
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
         
-        // カンマを含むデータが不具合を起こさないよう「"」で囲む
-        csvContent += `"${task.text}","${task.date || '期限なし'}","${priorityLabel}","${status}"\n`;
-    });
-
-    // 文字化け防止（UTF-8 BOM）
-    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-    const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
-    
-    // ダウンロード用のリンクを一時的に作ってクリックする
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "my_tasks.csv");
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}    }
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "my_tasks.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
 </script>
-
 </body>
-
 </html>
