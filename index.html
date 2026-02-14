@@ -3,51 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Business Task Manager Master</title>
+    <title>Business Task Manager Master Cloud</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2563eb">
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(() => console.log("Service Worker Registered"));
-        }
-    </script>
     <style>
         :root { --primary: #2563eb; --success: #10b981; --danger: #ff4d4f; --warning: #faad14; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #f8fafc; display: flex; justify-content: center; padding: 20px; }
         .container { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 600px; }
-        
         .stats-bar { display: flex; justify-content: space-around; background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9rem; font-weight: bold; }
         .stat-item { text-align: center; }
         .stat-count { display: block; font-size: 1.2rem; color: var(--primary); }
-
         .input-group { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 10px; }
         input, select, .btn { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; outline: none; }
-        
-        /* 検索窓のスタイル */
         #searchInput { width: 100%; margin-bottom: 10px; box-sizing: border-box; border: 2px solid #e2e8f0; }
-        #searchInput:focus { border-color: var(--primary); }
-
         .btn { cursor: pointer; font-weight: bold; border: none; transition: 0.2s; }
         .btn-add { background: var(--primary); color: white; width: 100%; margin-bottom: 10px; }
         .btn-sort { background: white; border: 1px solid var(--primary); color: var(--primary); width: 100%; margin-bottom: 10px; }
         .btn-csv { background-color: #475569; color: white; width: 100%; margin-bottom: 20px; }
-        .btn:hover { opacity: 0.8; }
-
         .filter-group { display: flex; gap: 5px; margin-bottom: 15px; }
         .filter-btn { flex: 1; padding: 8px; font-size: 0.8rem; background: #e2e8f0; border-radius: 5px; cursor: pointer; border: none; }
         .filter-btn.active { background: var(--primary); color: white; }
-
         ul { list-style: none; padding: 0; }
         li { background: white; border: 1px solid #e2e8f0; padding: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-radius: 10px; }
         .priority-high { border-left: 8px solid var(--danger); }
         .priority-mid { border-left: 8px solid var(--warning); }
         .priority-low { border-left: 8px solid var(--success); }
-
         .completed { opacity: 0.5; background: #f8fafc; }
         .completed .task-text { text-decoration: line-through; }
-        .overdue .task-date { color: var(--danger); font-weight: bold; }
-
         .task-info { flex: 1; cursor: pointer; }
         .task-text { font-weight: 500; }
         .task-date { font-size: 0.75rem; color: #64748b; }
@@ -57,15 +39,14 @@
 <body>
 
 <div class="container">
-    <h2>Task Manager Master</h2>
-
+    <h2>Task Master Cloud</h2>
     <div class="stats-bar">
         <div class="stat-item">合計<span id="totalCount" class="stat-count">0</span></div>
         <div class="stat-item">未完了<span id="activeCount" class="stat-count">0</span></div>
         <div class="stat-item">完了<span id="doneCount" class="stat-count">0</span></div>
     </div>
 
-    <input type="text" id="searchInput" placeholder="タスクを検索..." oninput="render()">
+    <input type="text" id="searchInput" placeholder="タスクを検索..." oninput="triggerRender()">
 
     <div class="input-group">
         <input type="text" id="taskInput" placeholder="何を成し遂げますか？">
@@ -89,187 +70,113 @@
     <ul id="taskList"></ul>
 </div>
 
-<script>
-    <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-  // 【重要】ステップ1でメモした自分の設定に書き換えてください
-  const firebaseConfig = {
-　apiKey: "AIzaSyD_hMGCjU2ml4fdW7s8QG5cd0hiCleHpmI",
-  authDomain: "my-business-app-b7bfe.firebaseapp.com",
-  projectId: "my-business-app-b7bfe",
-  storageBucket: "my-business-app-b7bfe.firebasestorage.app",
-  messagingSenderId: "797899280413",
-  appId: "1:797899280413:web:6852f909a1fe9f43e836f4",
-  };
+    const firebaseConfig = {
+        apiKey: "AIzaSyD_hMGCjU2ml4fdW7s8QG5cd0hiCleHpmI",
+        authDomain: "my-business-app-b7bfe.firebaseapp.com",
+        projectId: "my-business-app-b7bfe",
+        storageBucket: "my-business-app-b7bfe.firebasestorage.app",
+        messagingSenderId: "797899280413",
+        appId: "1:797899280413:web:6852f909a1fe9f43e836f4",
+    };
 
-  // Firebaseの初期化
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const tasksCol = collection(db, "tasks");
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const tasksCol = collection(db, "tasks");
 
-  // --- ここからFirebase用の関数に作り替えていきます ---
-
-  // タスクを追加する
-  window.addTask = async () => {
-    const text = document.getElementById('taskInput').value.trim();
-    const date = document.getElementById('dateInput').value;
-    const priority = document.getElementById('priorityInput').value;
-    if (!text) return;
-
-    await addDoc(tasksCol, {
-      text,
-      date,
-      priority,
-      completed: false,
-      createdAt: new Date()
-    });
-    
-    document.getElementById('taskInput').value = "";
-  };
-
-  // リアルタイムでデータを監視して表示する
-  onSnapshot(query(tasksCol, orderBy("createdAt", "desc")), (snapshot) => {
-    const tasks = [];
-    snapshot.forEach(doc => tasks.push({ id: doc.id, ...doc.data() }));
-    render(tasks); // データを渡して描画
-  });
-
-  // タスクの完了切り替え
-  window.toggleTask = async (id, completed) => {
-    const taskDoc = doc(db, "tasks", id);
-    await updateDoc(taskDoc, { completed: !completed });
-  };
-
-  // タスクの削除
-  window.deleteTask = async (id) => {
-    await deleteDoc(doc(db, "tasks", id));
-  };
-</script>
+    let allTasks = []; // クラウドから取得した全データを保持
     let currentFilter = 'all';
 
     window.onload = () => {
         document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
-        render();
     };
 
-    function addTask() {
+    // --- Firebase操作関数 ---
+    window.addTask = async () => {
         const text = document.getElementById('taskInput').value.trim();
         const date = document.getElementById('dateInput').value;
         const priority = document.getElementById('priorityInput').value;
         if (!text) return;
-
-        const tasks = getTasks();
-        tasks.push({ text, date, priority, completed: false });
-        saveTasks(tasks);
+        await addDoc(tasksCol, { text, date, priority, completed: false, createdAt: new Date() });
         document.getElementById('taskInput').value = "";
+    };
+
+    window.toggleTask = async (id, completed) => {
+        await updateDoc(doc(db, "tasks", id), { completed: !completed });
+    };
+
+    window.deleteTask = async (id) => {
+        if(confirm("削除しますか？")) await deleteDoc(doc(db, "tasks", id));
+    };
+
+    window.sortTasks = () => {
+        allTasks.sort((a, b) => (a.date || '9999') > (b.date || '9999') ? 1 : -1);
         render();
-    }
+    };
 
-    function getTasks() {
-        return JSON.parse(localStorage.getItem('masterTasks')) || [];
-    }
-
-    function saveTasks(tasks) {
-        localStorage.setItem('masterTasks', JSON.stringify(tasks));
-    }
-
-    function toggleTask(index) {
-        const tasks = getTasks();
-        tasks[index].completed = !tasks[index].completed;
-        saveTasks(tasks);
-        render();
-    }
-
-    function deleteTask(index) {
-        const tasks = getTasks();
-        tasks.splice(index, 1);
-        saveTasks(tasks);
-        render();
-    }
-
-    function sortTasks() {
-        const tasks = getTasks();
-        tasks.sort((a, b) => (a.date || '9999') > (b.date || '9999') ? 1 : -1);
-        saveTasks(tasks);
-        render();
-    }
-
-    function filterTasks(type, btn) {
+    window.filterTasks = (type, btn) => {
         currentFilter = type;
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         render();
-    }
+    };
 
+    window.triggerRender = () => render();
+
+    // リアルタイム監視
+    onSnapshot(query(tasksCol, orderBy("createdAt", "desc")), (snapshot) => {
+        allTasks = [];
+        snapshot.forEach(doc => allTasks.push({ id: doc.id, ...doc.data() }));
+        render();
+    });
+
+    // 描画関数
     function render() {
         const list = document.getElementById('taskList');
-        const tasks = getTasks();
         const searchWord = document.getElementById('searchInput').value.toLowerCase();
         list.innerHTML = "";
 
-        let total = tasks.length;
-        let active = tasks.filter(t => !t.completed).length;
+        let total = allTasks.length;
+        let active = allTasks.filter(t => !t.completed).length;
         document.getElementById('totalCount').innerText = total;
         document.getElementById('activeCount').innerText = active;
         document.getElementById('doneCount').innerText = total - active;
 
-        const today = new Date().toISOString().split('T')[0];
-
-        tasks.forEach((task, index) => {
-            // 検索ワードによるフィルタリング
+        allTasks.forEach((task) => {
             if (searchWord && !task.text.toLowerCase().includes(searchWord)) return;
-
-            // ボタンによるフィルタリング
             if (currentFilter === 'active' && task.completed) return;
             if (currentFilter === 'high' && task.priority !== 'priority-high') return;
 
             const li = document.createElement('li');
             li.className = `${task.priority} ${task.completed ? 'completed' : ''}`;
-            if (task.date && task.date < today && !task.completed) li.classList.add('overdue');
-
             li.innerHTML = `
-                <div class="task-info" onclick="toggleTask(${index})">
+                <div class="task-info" onclick="toggleTask('${task.id}', ${task.completed})">
                     <div class="task-text">${task.text}</div>
                     <div class="task-date">${task.date || '期限なし'}</div>
                 </div>
-                <button class="delete-btn" onclick="deleteTask(${index})">削除</button>
+                <button class="delete-btn" onclick="deleteTask('${task.id}')">削除</button>
             `;
             list.appendChild(li);
         });
     }
 
-    function exportCSV() {
-        const tasks = getTasks();
-        if (tasks.length === 0) {
-            alert("書き出すデータがありません");
-            return;
-        }
-
-        let csvContent = "タスク名,期限,重要度,状態\n";
-
-        tasks.forEach(task => {
-            const status = task.completed ? "完了" : "未完了";
-            const priorityLabel = task.priority === "priority-high" ? "高" : 
-                                 task.priority === "priority-mid" ? "中" : "低";
-            
-            csvContent += `"${task.text}","${task.date || '期限なし'}","${priorityLabel}","${status}"\n`;
+    // CSV出力
+    window.exportCSV = () => {
+        if (allTasks.length === 0) return alert("データがありません");
+        let csv = "タスク名,期限,重要度,状態\n";
+        allTasks.forEach(t => {
+            const p = t.priority === "priority-high" ? "高" : t.priority === "priority-mid" ? "中" : "低";
+            csv += `"${t.text}","${t.date || '期限なし'}","${p}","${t.completed ? '完了' : '未完了'}"\n`;
         });
-
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-        const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8;" });
-        
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", "my_tasks.csv");
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
+        link.href = URL.createObjectURL(blob);
+        link.download = "tasks_cloud.csv";
         link.click();
-        document.body.removeChild(link);
-    }
+    };
 </script>
 </body>
 </html>
-
