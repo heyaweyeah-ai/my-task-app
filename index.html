@@ -1,56 +1,50 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <link rel="icon" href="icon.png">
-    <link rel="apple-touch-icon" href="icon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Master Pro: Triage</title>
+    <title>Task Master AI</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
     <style>
         :root { --primary: #2563eb; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --google: #4285F4; }
         body { font-family: 'Segoe UI', sans-serif; background-color: #f1f5f9; display: flex; justify-content: center; padding: 20px; color: #334155; }
         .container { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); width: 100%; max-width: 600px; }
         
-        /* 認証・共通 */
         .hidden { display: none !important; }
         .btn { cursor: pointer; font-weight: bold; border: none; padding: 12px; border-radius: 8px; transition: 0.2s; width: 100%; }
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: var(--primary); color: white; }
         .btn-google { background: var(--google); color: white; margin-bottom: 10px; }
         .btn-outline { background: white; border: 1px solid var(--primary); color: var(--primary); margin-top: 10px; }
-        input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; width: 100%; box-sizing: border-box; }
+        input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; width: 100%; box-sizing: border-box; transition: all 0.3s; }
         
-        /* リストアイテムのスタイル（トリアージ対応） */
+        /* AI検知時のエフェクト */
+        .ai-detected { border-color: var(--danger) !important; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); }
+
         ul { list-style: none; padding: 0; }
-        li { background: white; border: 1px solid #e2e8f0; padding: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-radius: 10px; border-left-width: 6px; border-left-style: solid; transition: all 0.2s; }
+        li { background: white; border: 1px solid #e2e8f0; padding: 15px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-radius: 10px; border-left-width: 6px; border-left-style: solid; }
         
-        /* 状態別のスタイル */
-        .completed { opacity: 0.6; background: #f8fafc; text-decoration: line-through; border-left-color: #cbd5e1 !important; }
-        
-        /* 期限切れ（赤） */
         .status-overdue { border-left-color: var(--danger); background-color: #fef2f2; }
         .status-overdue .date-badge { color: var(--danger); font-weight: bold; }
-        
-        /* 今日が期限（黄） */
         .status-today { border-left-color: var(--warning); background-color: #fffbeb; }
         .status-today .date-badge { color: var(--warning); font-weight: bold; }
-        
-        /* 余裕あり（緑/青） */
-        .status-normal { border-left-color: var(--success); }
         .status-high { border-left-color: var(--primary); }
+        .status-normal { border-left-color: var(--success); }
+        .completed { opacity: 0.6; background: #f8fafc; text-decoration: line-through; border-left-color: #cbd5e1 !important; }
 
         .task-content { flex: 1; cursor: pointer; }
         .task-title { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
         .task-meta { font-size: 0.8rem; color: #64748b; display: flex; gap: 10px; align-items: center; }
-        .delete-btn { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; font-size: 0.75rem; width: auto; }
+        .delete-btn { background: none; border: 1px solid var(--danger); color: var(--danger); padding: 5px 10px; font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div id="authSection">
-        <h2 style="text-align:center; margin-bottom:20px;">Task Master Login</h2>
+        <h2 style="text-align:center; margin-bottom:20px;">Task Master AI</h2>
         <button class="btn btn-google" onclick="window.handleGoogleLogin()">Googleでログイン</button>
         <div style="text-align:center; margin:15px; color:#94a3b8;">または</div>
         <input type="email" id="emailInput" placeholder="メールアドレス" style="margin-bottom:10px;">
@@ -61,10 +55,7 @@
 
     <div id="mainSection" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <div>
-                <small style="color:#64748b">User:</small>
-                <div id="userEmail" style="font-weight:bold;"></div>
-            </div>
+            <div><small style="color:#64748b">User:</small><div id="userEmail" style="font-weight:bold;"></div></div>
             <button class="btn" onclick="window.handleLogout()" style="width:auto; padding:5px 10px; font-size:0.8rem; background:#cbd5e1;">ログアウト</button>
         </div>
 
@@ -82,7 +73,7 @@
         <input type="text" id="searchInput" placeholder="🔍 タスクを検索..." oninput="window.triggerRender()" style="margin-bottom:15px;">
 
         <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; margin-bottom:10px;">
-            <input type="text" id="taskInput" placeholder="新しいタスク...">
+            <input type="text" id="taskInput" placeholder="AI待機中: 「緊急」「会議」...">
             <select id="priorityInput" style="width:80px;">
                 <option value="high">高</option>
                 <option value="mid" selected>中</option>
@@ -108,7 +99,6 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, onSnapshot, query, where, orderBy, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    // あなたの設定済みConfig
     const firebaseConfig = {
         apiKey: "AIzaSyD_hMGCjU2ml4fdW7s8QG5cd0hiCleHpmI",
         authDomain: "my-business-app-b7bfe.firebaseapp.com",
@@ -122,153 +112,33 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
-    
     let allTasks = [];
     let unsubscribe = null;
 
-    // --- 認証系 ---
+    // --- AIオートメーション機能 ---
+    const taskInput = document.getElementById('taskInput');
+    const priorityInput = document.getElementById('priorityInput');
+    const urgentKeywords = ["緊急", "至急", "重要", "会議", "アポ", "面談", "締切", "今日中", "必ず"];
+
+    taskInput.addEventListener('input', (e) => {
+        const text = e.target.value;
+        const hit = urgentKeywords.some(key => text.includes(key));
+        
+        if (hit) {
+            priorityInput.value = 'high'; // 自動で「高」にする
+            taskInput.classList.add('ai-detected'); // 赤枠で知らせる
+        } else {
+            taskInput.classList.remove('ai-detected');
+        }
+    });
+
+    // --- 認証機能 ---
     window.handleGoogleLogin = () => signInWithPopup(auth, provider).catch(e => alert(e.message));
     window.handleAuth = (type) => {
         const email = document.getElementById('emailInput').value;
         const pass = document.getElementById('passInput').value;
-        if (!email || !pass) return alert("メールとパスワードを入力してください");
+        if (!email || !pass) return alert("入力してください");
         if (type === 'signup') createUserWithEmailAndPassword(auth, email, pass).catch(e => alert(e.message));
         else signInWithEmailAndPassword(auth, email, pass).catch(e => alert(e.message));
     };
-    window.handleLogout = () => signOut(auth);
-
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('mainSection').classList.remove('hidden');
-            document.getElementById('userEmail').innerText = user.email || "Google User";
-            startSync(user.uid);
-        } else {
-            document.getElementById('authSection').classList.remove('hidden');
-            document.getElementById('mainSection').classList.add('hidden');
-            if (unsubscribe) unsubscribe();
-        }
-    });
-
-    // --- データ同期 ---
-    function startSync(uid) {
-        // インデックスエラー回避のため、一旦orderByを外してクライアント側でソートします
-        const q = query(collection(db, "tasks"), where("uid", "==", uid));
-        
-        unsubscribe = onSnapshot(q, (snapshot) => {
-            allTasks = [];
-            snapshot.forEach(tDoc => allTasks.push({ id: tDoc.id, ...tDoc.data() }));
-            // 日付順（新しい順）に並び替え
-            allTasks.sort((a, b) => (a.createdAt?.seconds || 0) < (b.createdAt?.seconds || 0) ? 1 : -1);
-            render();
-        });
-    }
-
-    // --- 描画ロジック（トリアージ機能） ---
-    window.triggerRender = () => render();
-
-    function render() {
-        const list = document.getElementById('taskList');
-        const searchWord = document.getElementById('searchInput').value.toLowerCase();
-        list.innerHTML = "";
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // 時間をリセットして日付だけで比較
-
-        let activeCount = 0;
-        let overdueCount = 0;
-
-        allTasks.forEach(task => {
-            // 検索フィルター
-            if (searchWord && !task.text.toLowerCase().includes(searchWord)) return;
-
-            // 期限計算ロジック
-            let statusClass = "status-normal";
-            let dateBadge = "";
-            let diffDays = null;
-
-            if (task.date) {
-                const deadline = new Date(task.date);
-                const diffTime = deadline - today;
-                diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // 残り日数
-
-                if (diffDays < 0) {
-                    statusClass = "status-overdue"; // 期限切れ（赤）
-                    dateBadge = `⚠ 期限切れ (${Math.abs(diffDays)}日超過)`;
-                    if(!task.completed) overdueCount++;
-                } else if (diffDays === 0) {
-                    statusClass = "status-today";   // 今日（黄）
-                    dateBadge = `🔥 今日まで`;
-                } else {
-                    statusClass = task.priority === 'high' ? "status-high" : "status-normal";
-                    dateBadge = `あと ${diffDays}日`;
-                }
-            } else {
-                dateBadge = "期限なし";
-            }
-
-            if (!task.completed) activeCount++;
-
-            const li = document.createElement('li');
-            li.className = `${statusClass} ${task.completed ? 'completed' : ''}`;
-            
-            li.innerHTML = `
-                <div class="task-content" onclick="window.toggleTask('${task.id}', ${task.completed})">
-                    <div class="task-title">${task.text}</div>
-                    <div class="task-meta">
-                        <span class="date-badge">${dateBadge}</span>
-                        <span style="display:none;">${task.date}</span> 
-                    </div>
-                </div>
-                <button class="delete-btn" onclick="window.deleteTask('${task.id}')">削除</button>
-            `;
-            list.appendChild(li);
-        });
-
-        document.getElementById('activeCount').innerText = activeCount;
-        document.getElementById('overdueCount').innerText = overdueCount;
-    }
-
-    // --- アクション ---
-    window.addTask = async () => {
-        const text = document.getElementById('taskInput').value.trim();
-        const date = document.getElementById('dateInput').value;
-        const priority = document.getElementById('priorityInput').value;
-        if (!text || !auth.currentUser) return;
-
-        await addDoc(collection(db, "tasks"), {
-            text, date, priority,
-            completed: false,
-            uid: auth.currentUser.uid,
-            createdAt: new Date()
-        });
-        document.getElementById('taskInput').value = "";
-    };
-
-    window.toggleTask = (id, status) => updateDoc(doc(db, "tasks", id), { completed: !status });
-    
-    window.deleteTask = async (id) => {
-        if(confirm("このタスクを完全に削除しますか？")) await deleteDoc(doc(db, "tasks", id));
-    };
-
-    window.sortTasks = () => {
-        allTasks.sort((a, b) => (a.date || '9999-99-99') > (b.date || '9999-99-99') ? 1 : -1);
-        render();
-    };
-
-    window.exportCSV = () => {
-        if (allTasks.length === 0) return alert("データがありません");
-        let csv = "タスク名,期限,状態\n";
-        allTasks.forEach(t => {
-            csv += `"${t.text}","${t.date || 'なし'}","${t.completed ? '完了' : '未完了'}"\n`;
-        });
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "my_tasks_cloud.csv";
-        link.click();
-    };
-</script>
-</body>
-</html>
-
+    window.handle
